@@ -3,82 +3,103 @@ import './App.css';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [email, setEmail] = useState('admin@amcreo.edu');
-  const [password, setPassword] = useState('••••••••');
-
-  const [dashboardData, setDashboardData] = useState({
-    energySaved: 68,
-    waterConserved: 2450,
-    carbonOffset: '1.8 Tons',
-    activeAgents: 4,
-    systemStatus: 'Fully Autonomous Active',
-    buildings: [
-      { name: 'Academic Block A', load: '42%', status: 'Optimized' },
-      { name: 'Computer Lab Complex', load: '78%', status: 'AI Regulating' },
-      { name: 'Central Library', load: '30%', status: 'Eco-Mode' },
-      { name: 'Student Hostel Wing', load: '65%', status: 'Normal' }
-    ],
-    logs: [
-      '[10:42 AM] Agent Alpha dimmed lights in Lecture Hall 304 (Zero Occupancy).',
-      '[10:38 AM] Agent Beta optimized valve pressure in North Wing water lines.',
-      '[10:30 AM] Agent Gamma triggered peak-load shifting for Lab servers.'
-    ]
-  });
-
-  const [activeTab, setActiveTab] = useState('overview');
+  const [collegeId, setCollegeId] = useState('');
+  const [password, setPassword] = useState('');
+  const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [actionStatus, setActionStatus] = useState('');
 
-  // Backend API se data fetch karne ka function
-  const fetchBackendData = async () => {
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setErrorMsg('');
+    
+    if (!collegeId || !password) {
+      setErrorMsg('Please enter both College ID and Password.');
+      return;
+    }
+
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/data');
+      const response = await fetch('http://localhost:5000/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ collegeId, password }),
+      });
+
       const data = await response.json();
-      setDashboardData(data);
+
+      if (response.ok) {
+        setDashboardData(data);
+        setIsLoggedIn(true);
+      } else {
+        setErrorMsg(data.error || 'Invalid credentials.');
+      }
       setLoading(false);
     } catch (error) {
-      console.log('Using local simulation data.');
+      setErrorMsg('Backend connection error. Make sure Python Flask server is running.');
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (isLoggedIn) {
-      fetchBackendData();
-    }
+    if (!isLoggedIn) return;
+    const interval = setInterval(() => {
+      setDashboardData(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          energySaved: prev.energySaved + Math.floor(Math.random() * 2),
+          waterConserved: prev.waterConserved + Math.floor(Math.random() * 5)
+        };
+      });
+    }, 5000);
+    return () => clearInterval(interval);
   }, [isLoggedIn]);
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (email && password) {
-      setIsLoggedIn(true);
-    } else {
-      alert('Please enter valid credentials.');
+  const triggerAIAction = (actionType) => {
+    if (actionType === 'balancer') {
+      setActionStatus('⚡ AI Cluster successfully rebalanced load across all campus substations!');
+    } else if (actionType === 'waste') {
+      setActionStatus('♻️ Waste Management Agent dispatched optimized cleaning route.');
     }
+    setTimeout(() => setActionStatus(''), 4000);
   };
 
   if (!isLoggedIn) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#05070b', fontFamily: 'Inter, sans-serif' }}>
         <div style={{ backgroundColor: '#0f172a', padding: '45px', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.7)', width: '100%', maxWidth: '420px', border: '1px solid #1e293b' }}>
-          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-            <h2 style={{ color: '#38bdf8', margin: '0 0 8px 0', fontSize: '28px', fontWeight: '800' }}>⚡ AMCREO Enterprise</h2>
-            <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>Autonomous Campus Resource & Energy Optimizer</p>
+          <div style={{ textAlign: 'center', marginBottom: '25px' }}>
+            <h2 style={{ color: '#38bdf8', margin: '0 0 8px 0', fontSize: '26px', fontWeight: '800' }}>⚡ AMCREO Enterprise</h2>
+            <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>Multi-College Autonomous Resource Optimizer</p>
           </div>
+
+          {errorMsg && (
+            <div style={{ backgroundColor: '#7f1d1d', color: '#fca5a5', padding: '10px', borderRadius: '6px', fontSize: '12px', marginBottom: '15px', textAlign: 'center' }}>
+              {errorMsg}
+            </div>
+          )}
+
           <form onSubmit={handleLogin}>
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', color: '#cbd5e1', fontSize: '12px', marginBottom: '6px', fontWeight: '600' }}>ADMIN EMAIL</label>
+              <label style={{ display: 'block', color: '#cbd5e1', fontSize: '12px', marginBottom: '6px', fontWeight: '600' }}>COLLEGE ID (e.g. bbdu)</label>
               <input 
-                type="email" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)}
+                type="text" 
+                placeholder="bbdu"
+                value={collegeId} 
+                onChange={(e) => setCollegeId(e.target.value)}
                 style={{ width: '100%', padding: '12px', borderRadius: '8px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#fff', boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', color: '#cbd5e1', fontSize: '12px', marginBottom: '6px', fontWeight: '600' }}>SECURE PASSWORD</label>
+              <label style={{ display: 'block', color: '#cbd5e1', fontSize: '12px', marginBottom: '6px', fontWeight: '600' }}>PASSWORD (e.g. bbd123)</label>
               <input 
                 type="password" 
+                placeholder="••••••••" 
                 value={password} 
                 onChange={(e) => setPassword(e.target.value)}
                 style={{ width: '100%', padding: '12px', borderRadius: '8px', backgroundColor: '#1e293b', border: '1px solid #334155', color: '#fff', boxSizing: 'border-box' }}
@@ -87,9 +108,12 @@ function App() {
             <button 
               type="submit" 
               style={{ width: '100%', background: 'linear-gradient(135deg, #0284c7, #2563eb)', color: 'white', padding: '14px', borderRadius: '8px', border: 'none', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' }}>
-              Launch Command Center
+              {loading ? 'Authenticating...' : 'Launch Command Center'}
             </button>
           </form>
+          <div style={{ marginTop: '20px', textAlign: 'center', color: '#64748b', fontSize: '11px' }}>
+            Test BBDU Login - ID: <span style={{ color: '#38bdf8' }}>bbdu</span> | Password: <span style={{ color: '#38bdf8' }}>bbd123</span>
+          </div>
         </div>
       </div>
     );
@@ -130,7 +154,7 @@ function App() {
 
         <div>
           <div style={{ backgroundColor: '#1e293b', padding: '12px', borderRadius: '8px', marginBottom: '15px', fontSize: '12px', color: '#94a3b8' }}>
-            <span style={{ color: '#34d399', fontWeight: 'bold' }}>● Python API:</span> Connected
+            <span style={{ color: '#34d399', fontWeight: 'bold' }}>● Active Tenant:</span> {dashboardData.collegeName}
           </div>
           <button 
             onClick={() => setIsLoggedIn(false)}
@@ -146,20 +170,22 @@ function App() {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1e293b', paddingBottom: '20px', marginBottom: '30px' }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: '24px', color: '#fff', fontWeight: '700' }}>Campus Resource Command Center</h1>
+            <h1 style={{ margin: 0, fontSize: '24px', color: '#fff', fontWeight: '700' }}>{dashboardData.collegeName} - Command Center</h1>
             <p style={{ margin: '5px 0 0 0', color: '#94a3b8', fontSize: '13px' }}>Multi-agent autonomous decision loop operating in real-time.</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <button 
-              onClick={fetchBackendData}
-              style={{ backgroundColor: '#1e293b', color: '#38bdf8', border: '1px solid #334155', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}>
-              {loading ? 'Syncing API...' : '🔄 Sync Python Backend'}
-            </button>
             <div style={{ backgroundColor: '#064e3b', color: '#34d399', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', border: '1px solid #065f46' }}>
-              🟢 {dashboardData.systemStatus}
+              🟢 {dashboardData.systemStatus} (Live Sync)
             </div>
           </div>
         </div>
+
+        {/* Action Status Notification Banner */}
+        {actionStatus && (
+          <div style={{ backgroundColor: '#0369a1', color: '#bae6fd', padding: '12px 20px', borderRadius: '8px', marginBottom: '20px', fontSize: '13px', fontWeight: '600', border: '1px solid #0284c7' }}>
+            {actionStatus}
+          </div>
+        )}
 
         {/* Tab 1: Overview */}
         {activeTab === 'overview' && (
@@ -169,7 +195,7 @@ function App() {
               <div style={{ backgroundColor: '#0f172a', padding: '24px', borderRadius: '12px', border: '1px solid #1e293b' }}>
                 <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>ENERGY SAVED TODAY</span>
                 <p style={{ fontSize: '32px', margin: '10px 0 5px 0', fontWeight: '800', color: '#38bdf8' }}>{dashboardData.energySaved} kWh</p>
-                <span style={{ color: '#34d399', fontSize: '12px' }}>↑ 18.5% efficiency gain</span>
+                <span style={{ color: '#34d399', fontSize: '12px' }}>↑ Live counter active</span>
               </div>
               <div style={{ backgroundColor: '#0f172a', padding: '24px', borderRadius: '12px', border: '1px solid #1e293b' }}>
                 <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>WATER CONSERVED</span>
@@ -179,7 +205,7 @@ function App() {
               <div style={{ backgroundColor: '#0f172a', padding: '24px', borderRadius: '12px', border: '1px solid #1e293b' }}>
                 <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>CARBON OFFSET</span>
                 <p style={{ fontSize: '32px', margin: '10px 0 5px 0', fontWeight: '800', color: '#facc15' }}>{dashboardData.carbonOffset}</p>
-                <span style={{ color: '#94a3b8', fontSize: '12px' }}>Equivalent to 80 trees</span>
+                <span style={{ color: '#94a3b8', fontSize: '12px' }}>Equivalent environmental offset</span>
               </div>
               <div style={{ backgroundColor: '#0f172a', padding: '24px', borderRadius: '12px', border: '1px solid #1e293b' }}>
                 <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: '700' }}>ACTIVE AI AGENTS</span>
@@ -205,12 +231,12 @@ function App() {
                 <h3 style={{ margin: '0 0 15px 0', fontSize: '16px', color: '#fff' }}>🚀 Quick AI Actions</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <button 
-                    onClick={() => alert('AI Cluster executed emergency load balancing across all campus substations.')}
+                    onClick={() => triggerAIAction('balancer')}
                     style={{ backgroundColor: '#0284c7', color: 'white', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>
                     Trigger Load Balancer
                   </button>
                   <button 
-                    onClick={() => alert('Waste Management Agent dispatched smart cleaning route.')}
+                    onClick={() => triggerAIAction('waste')}
                     style={{ backgroundColor: '#1e293b', color: '#38bdf8', border: '1px solid #334155', padding: '12px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}>
                     Run Waste Agent
                   </button>
@@ -250,7 +276,7 @@ function App() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                  <span>Monday Power Optimization</span>
+                  <span>Campus Power Optimization</span>
                   <span style={{ color: '#38bdf8' }}>88% Efficiency</span>
                 </div>
                 <div style={{ width: '100%', backgroundColor: '#1e293b', height: '12px', borderRadius: '6px' }}>
@@ -259,7 +285,7 @@ function App() {
               </div>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                  <span>Tuesday Water Conservation Rate</span>
+                  <span>Water Conservation Rate</span>
                   <span style={{ color: '#34d399' }}>94% Efficiency</span>
                 </div>
                 <div style={{ width: '100%', backgroundColor: '#1e293b', height: '12px', borderRadius: '6px' }}>
